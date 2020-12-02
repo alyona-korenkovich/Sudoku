@@ -74,7 +74,7 @@ class SudokuSolver(grid: Array<IntArray>, gridSize: Int) {
         return board
     }
 
-    fun saveMatrix(grid: Array<IntArray>) {
+    private fun saveMatrix(grid: Array<IntArray>) {
         for (row in 0 until boardSize) {
             for (column in 0 until boardSize) {
                 board[row][column] = grid[row][column]
