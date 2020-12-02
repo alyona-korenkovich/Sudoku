@@ -1,21 +1,29 @@
 package ru.spbstu
 
+import kotlin.math.sqrt
 import kotlin.random.Random
 
-class Sudoku {
-    private var board: Array<IntArray> = Array(9) { IntArray(9) }
+class Sudoku(gridSize: Int, difficulty: Int) {
+    private var boardSize = gridSize
+    private var blockSize = sqrt(boardSize.toDouble()).toInt()
+    private var board: Array<IntArray> = Array(boardSize) { IntArray(boardSize) }
+    private var n = difficulty
 
-    fun setUpGrid(): Array<IntArray> {
+    init {
+        setUpGrid()
+    }
+
+    private fun setUpGrid(): Array<IntArray> {
         createBaseGrid()
         board = shuffle(board)
-        removeCells(board, Random.nextInt(30, 70))
+        removeCells(board, n)
         return board
     }
 
     private fun createBaseGrid() {
-        for (i in 0..8) {
-            for (j in 0..8) {
-                board[i][j] = (i * 3 + i / 3 + j) % 9 + 1
+        for (i in 0 until boardSize) {
+            for (j in 0 until boardSize) {
+                board[i][j] = (i * blockSize + i / blockSize + j) % boardSize + 1
             }
         }
     }
@@ -23,8 +31,8 @@ class Sudoku {
     fun shuffle(board: Array<IntArray>): Array<IntArray> {
         var shuffledGrid = board
 
-        var num = Random.nextInt(9, 28)
-        val randI = Random.nextInt(9, num + 1)
+        var num = Random.nextInt(boardSize, blockSize * boardSize)
+        val randI = Random.nextInt(boardSize, num + 1)
         while (num != 0) {
             if (num == randI) {
                 shuffledGrid = transpose(shuffledGrid)
@@ -33,7 +41,6 @@ class Sudoku {
                 1 -> swapRowsSmall(shuffledGrid)
                 2 -> shuffledGrid = swapColumnsSmall(shuffledGrid)
                 3 -> swapRowsAreas(shuffledGrid)
-
                 else -> shuffledGrid = swapColumnsAreas(shuffledGrid)
             }
             num--
@@ -42,9 +49,9 @@ class Sudoku {
     }
 
     private fun transpose(grid: Array<IntArray>): Array<IntArray> {
-        val transposedGrid = Array(9) { IntArray(9) }
-        for (i in 0..8) {
-            for (j in 0..8) {
+        val transposedGrid = Array(boardSize) { IntArray(boardSize) }
+        for (i in 0 until boardSize) {
+            for (j in 0 until boardSize) {
                 transposedGrid[i][j] = grid[j][i]
             }
         }
@@ -52,26 +59,27 @@ class Sudoku {
     }
 
     private fun swapRowsSmall(grid: Array<IntArray>) {
-        val firstRow = Random.nextInt(0, 9)
-        val secondRow = when (firstRow % 3) {
-            0 -> firstRow + Random.nextInt(1, 3)
-            1 -> firstRow + Random.nextInt(0, 2) * 2 - 1
-            else -> firstRow + Random.nextInt(0, 2) - 2
+        val randBlock = Random.nextInt(0, blockSize)
+        val randRow1 = blockSize * randBlock + Random.nextInt(0, blockSize)
+        var randRow2 = blockSize * randBlock + Random.nextInt(0, blockSize)
+        //In case if randRow1 == randRow2, we rerandomize the second row
+        while (randRow1 == randRow2) {
+            randRow2 = blockSize * randBlock + Random.nextInt(0, blockSize)
         }
-        val temp = grid[firstRow]
-        grid[firstRow] = grid[secondRow]
-        grid[secondRow] = temp
+        val temp = grid[randRow1]
+        grid[randRow1] = grid[randRow2]
+        grid[randRow2] = temp
     }
 
     private fun swapRowsAreas(grid: Array<IntArray>) {
-        val firstArea = Random.nextInt(0, 3)
-        var secondArea = Random.nextInt(0, 3)
+        val firstArea = Random.nextInt(0, blockSize)
+        var secondArea = Random.nextInt(0, blockSize)
         while (firstArea == secondArea) {
-            secondArea = Random.nextInt(0, 3)
+            secondArea = Random.nextInt(0, blockSize)
         }
-        for (i in 0..2) {
-            val m = firstArea * 3 + i
-            val n = secondArea * 3 + i
+        for (i in 0 until blockSize) {
+            val m = firstArea * blockSize + i
+            val n = secondArea * blockSize + i
             val temp = grid[m]
             grid[m] = grid[n]
             grid[n] = temp
@@ -91,44 +99,38 @@ class Sudoku {
     }
 
     fun removeCells(grid: Array<IntArray>, n: Int) {
-        val seen = Array(9) { IntArray(9) { 0 } }
+        val seen = Array(boardSize) { IntArray(boardSize) { 0 } }
         var difficulty = n
-        val solver = SudokuSolver(grid)
-        val solvedGrid = Array(9) { IntArray(9) }
+        val solvedGrid = Array(boardSize) { IntArray(boardSize) }
 
-        for (row in 0..8) {
-            for (column in 0..8) {
+        for (row in 0 until boardSize) {
+            for (column in 0 until boardSize) {
                 solvedGrid[row][column] = grid[row][column]
             }
         }
 
         while (difficulty != 0) {
-            val randRow = Random.nextInt(0, 9)
-            val randColumn = Random.nextInt(0, 9)
+            val randRow = Random.nextInt(0, boardSize)
+            val randColumn = Random.nextInt(0, boardSize)
             if (seen[randRow][randColumn] == 0) {
                 seen[randRow][randColumn] = 1
-                val selectedCell = grid[randRow][randColumn]
                 grid[randRow][randColumn] = 0
-                solver.saveMatrix(grid)
-                solver.solve()
-                if (compareTwoMatrices(solvedGrid, solver.getBoard())) difficulty--
-                else grid[randRow][randColumn] = selectedCell
+                difficulty--
             }
         }
-    }
-
-    private fun compareTwoMatrices(grid: Array<IntArray>, grid2: Array<IntArray>): Boolean {
-        for (row in 0..8) {
-            if (grid[row].contentToString() != grid2[row].contentToString()) {
-                return false
-            }
-        }
-        return true
     }
 
     fun printTheGrid(grid: Array<IntArray>) {
-        for (row in 0 until 9) {
+        for (row in 0 until boardSize) {
             println(grid[row].contentToString())
         }
+    }
+
+    fun getGrid(): Array<IntArray> {
+        return board
+    }
+
+    fun getGridSize(): Int {
+        return boardSize
     }
 }

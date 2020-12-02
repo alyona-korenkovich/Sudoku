@@ -1,17 +1,19 @@
 package ru.spbstu
 
-class SudokuSolver(grid: Array<IntArray>) {
-    private var board: Array<IntArray> = Array(9) { IntArray(9) }
+class SudokuSolver(grid: Array<IntArray>, gridSize: Int) {
+    private var board = Array(gridSize) { IntArray(gridSize) }
+    private var boardSize = gridSize
+    private var blockSize = kotlin.math.sqrt(boardSize.toDouble()).toInt()
 
     init {
         saveMatrix(grid)
     }
 
     fun solve(): Boolean {
-        for (row in 0 until 9) {
-            for (column in 0 until 9) {
+        for (row in 0 until boardSize) {
+            for (column in 0 until boardSize) {
                 if (board[row][column] == 0) {
-                    for (k in 1..9) {
+                    for (k in 1..boardSize) {
                         board[row][column] = k
                         if (validityCheck(board, row, column) && solve()) {
                             return true
@@ -30,27 +32,27 @@ class SudokuSolver(grid: Array<IntArray>) {
     }
 
     private fun isInRow(board: Array<IntArray>, row: Int): Boolean {
-        val digits = BooleanArray(9)
-        for (column in 0 until 9) {
+        val digits = BooleanArray(boardSize)
+        for (column in 0 until boardSize) {
             if (!checkConstraint(board, row, digits, column)) return false
         }
         return true
     }
 
     private fun isInColumn(board: Array<IntArray>, column: Int): Boolean {
-        val digits = BooleanArray(9)
-        for (row in 0 until 9) {
+        val digits = BooleanArray(boardSize)
+        for (row in 0 until boardSize) {
             if (!checkConstraint(board, row, digits, column)) return false
         }
         return true
     }
 
     private fun isInBlock(board: Array<IntArray>, row: Int, column: Int): Boolean {
-        val digits = BooleanArray(9)
-        val subsectionRowStart: Int = row / 3 * 3
-        val subsectionRowEnd: Int = subsectionRowStart + 3
-        val subsectionColumnStart: Int = column / 3 * 3
-        val subsectionColumnEnd: Int = subsectionColumnStart + 3
+        val digits = BooleanArray(boardSize)
+        val subsectionRowStart: Int = row / blockSize * blockSize
+        val subsectionRowEnd: Int = subsectionRowStart + blockSize
+        val subsectionColumnStart: Int = column / blockSize * blockSize
+        val subsectionColumnEnd: Int = subsectionColumnStart + blockSize
         for (r in subsectionRowStart until subsectionRowEnd) {
             for (c in subsectionColumnStart until subsectionColumnEnd) {
                 if (!checkConstraint(board, r, digits, c)) return false
@@ -73,8 +75,8 @@ class SudokuSolver(grid: Array<IntArray>) {
     }
 
     fun saveMatrix(grid: Array<IntArray>) {
-        for (row in 0..8) {
-            for (column in 0..8) {
+        for (row in 0 until boardSize) {
+            for (column in 0 until boardSize) {
                 board[row][column] = grid[row][column]
             }
         }
