@@ -1,6 +1,17 @@
 package ru.spbstu
 
-class SudokuSolver(grid: Array<IntArray>, gridSize: Int) {
+/** Solving Sudoku using Backtracking Algorithm
+ *
+ * If there's no constraints' violation, the algorithm goes to the next cell,
+ * fills in all the possible solutions and repeat all the checks.
+ * If there's at least one violation of the constraints, the number of a cell increases
+ * As far as the number gets to 9 and constraints' violation remains,
+ * algorithm backtracks to the previous cell and increases its number.
+ */
+
+
+class SudokuSolverBacktracking(grid: Array<IntArray>) {
+    private var gridSize = grid.size
     private var board = Array(gridSize) { IntArray(gridSize) }
     private var boardSize = gridSize
     private var blockSize = kotlin.math.sqrt(boardSize.toDouble()).toInt()
@@ -18,6 +29,7 @@ class SudokuSolver(grid: Array<IntArray>, gridSize: Int) {
                         if (validityCheck(board, row, column) && solve()) {
                             return true
                         }
+                        //Backtracking if reaching a dead end
                         board[row][column] = 0
                     }
                     return false
@@ -26,6 +38,13 @@ class SudokuSolver(grid: Array<IntArray>, gridSize: Int) {
         }
         return true
     }
+
+    /** Checking constraints:
+     *  1) Each row will have only one number of each kind
+     *  2) Each column will have only one number of each kind
+     *  3) Each subsection will have only one number of each kind
+     *  4) Only one number can be in a cell
+     */
 
     fun validityCheck(board: Array<IntArray>, row: Int, column: Int): Boolean {
         return isInRow(board, row) && isInColumn(board, column) && isInBlock(board, row, column)
@@ -69,6 +88,8 @@ class SudokuSolver(grid: Array<IntArray>, gridSize: Int) {
         }
         return true
     }
+
+    //Helper functions
 
     fun getBoard(): Array<IntArray> {
         return board

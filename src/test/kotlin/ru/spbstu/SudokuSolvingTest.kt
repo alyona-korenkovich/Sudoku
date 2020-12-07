@@ -8,7 +8,8 @@ import kotlin.test.assertTrue
 
 class SudokuSolvingTest {
     private lateinit var sudoku: Sudoku
-    private lateinit var sudokuSolver: SudokuSolver
+    private lateinit var sudokuSolverBacktracking: SudokuSolverBacktracking
+    private lateinit var sudokuSolverDLX: SudokuSolverDLX
     private lateinit var grid: Array<IntArray>
     private lateinit var answerGrid: Array<IntArray>
 
@@ -81,7 +82,7 @@ class SudokuSolvingTest {
     private fun createWrongGrid(): Array<IntArray> {
         val wrong = Array(9) { IntArray(9) }
 
-        wrong[0] = intArrayOf(9, 1, 2, 7, 5, 3, 6, 4, 9) //Две девятки в одном ряду, колонке и блоке
+        wrong[0] = intArrayOf(9, 1, 2, 7, 5, 3, 6, 4, 9)
         wrong[1] = intArrayOf(9, 4, 3, 6, 8, 2, 1, 7, 5)
         wrong[2] = intArrayOf(6, 7, 5, 4, 9, 1, 2, 8, 3)
         wrong[3] = intArrayOf(1, 5, 4, 2, 3, 7, 8, 9, 6)
@@ -96,24 +97,45 @@ class SudokuSolvingTest {
 
     @Test
     fun sudokuSolvingTest() {
-        //Checking sudokuSolver.solve() on grid 9x9
+        //Checking sudokuSolverBacktracking.solve() and sudokuSolverDLX.solve() on grids 9x9 & 16x16
+
         grid = createTestGrid9x9()
         answerGrid = createAnswerGrid9x9()
-        sudokuSolver = SudokuSolver(grid, 9)
-        sudokuSolver.solve()
-        var solved = sudokuSolver.getBoard()
+        sudokuSolverBacktracking = SudokuSolverBacktracking(grid)
+        var timeBacktracking: Long = measureTimeMillis { sudokuSolverBacktracking.solve() } //time in milliseconds
+        var solved = sudokuSolverBacktracking.getBoard()
         for (row in 0 until 9) {
             assertTrue(answerGrid[row].contentEquals(solved[row]))
         }
 
+        sudokuSolverDLX = SudokuSolverDLX(grid, false, needToPrint = true)
+        var timeDLX: Long = measureTimeMillis { sudokuSolverDLX.solve() }
+        solved = sudokuSolverDLX.getSolvedGrid()
+        for (row in 0 until 9) {
+            assertTrue(answerGrid[row].contentEquals(solved[row]))
+        }
+
+        println("Time solving (Backtracking): $timeBacktracking")
+        println("Time solving (DLX): $timeDLX")
+
         grid = createTestGrid16x16()
         answerGrid = createAnswerGrid16x16()
-        sudokuSolver = SudokuSolver(grid, 16)
-        sudokuSolver.solve()
-        solved = sudokuSolver.getBoard()
+        sudokuSolverBacktracking = SudokuSolverBacktracking(grid)
+        timeBacktracking = measureTimeMillis { sudokuSolverBacktracking.solve() }
+        solved = sudokuSolverBacktracking.getBoard()
         for (row in 0 until 16) {
             assertTrue(answerGrid[row].contentEquals(solved[row]))
         }
+
+        sudokuSolverDLX = SudokuSolverDLX(grid, false, needToPrint = true)
+        timeDLX = measureTimeMillis { sudokuSolverDLX.solve() }
+        solved = sudokuSolverDLX.getSolvedGrid()
+        for (row in 0 until 9) {
+            assertTrue(answerGrid[row].contentEquals(solved[row]))
+        }
+
+        println("Time solving (Backtracking): $timeBacktracking")
+        println("Time solving (DLX): $timeDLX")
     }
 
     /* Time experiment.
@@ -130,21 +152,23 @@ class SudokuSolvingTest {
         var complexGrid = Array(9) { IntArray(9) }
         var answerForComplexGrid = Array(9) { IntArray(9) }
         val averageMap = mutableMapOf<Int, List<Long>>() //Number of empty cells - test times solving
-        for (i in 1..80) {
+
+        //****** BACKTRACKING ALGORITHM ******
+        for (i in 0..80) {
             //taking 10 tests in order to calculate an average time solving for each difficulty level
             val list = mutableListOf<Long>()
             for (j in 0..9) {
                 sudoku = Sudoku(9, i)
                 val tempGrid = sudoku.getGrid()
                 timeInMillis = measureTimeMillis {
-                    sudokuSolver = SudokuSolver(sudoku.getGrid(), sudoku.getGridSize())
-                    sudokuSolver.solve()
+                    sudokuSolverBacktracking = SudokuSolverBacktracking(sudoku.getGrid())
+                    sudokuSolverBacktracking.solve()
                 }
                 list.add(timeInMillis)
                 if (timeInMillis > timeInMillisMax) {
                     timeInMillisMax = timeInMillis
                     complexGrid = tempGrid
-                    answerForComplexGrid = sudokuSolver.getBoard()
+                    answerForComplexGrid = sudokuSolverBacktracking.getBoard()
                 }
             }
             averageMap[i] = list
@@ -159,17 +183,80 @@ class SudokuSolvingTest {
         sudoku.printTheGrid(complexGrid)
         println("Its solution: ")
         sudoku.printTheGrid(answerForComplexGrid)
+
+        //****** DLX ALGORITHM ******
+
+        for (i in 1..80) {
+            val list = mutableListOf<Long>()
+            for (j in 0..9) {
+                sudoku = Sudoku(9, i)
+                val tempGrid = sudoku.getGrid()
+                timeInMillis = measureTimeMillis {
+                    sudokuSolverDLX = SudokuSolverDLX(sudoku.getGrid(), false, needToPrint = false)
+                    sudokuSolverDLX.solve()
+                }
+                list.add(timeInMillis)
+                if (timeInMillis > timeInMillisMax) {
+                    timeInMillisMax = timeInMillis
+                    complexGrid = tempGrid
+                    answerForComplexGrid = sudokuSolverDLX.getSolvedGrid()
+                }
+            }
+            averageMap[i] = list
+        }
+
+        println("Average time solving:")
+        for (i in averageMap.keys) {
+            val currAverage = averageMap[i]!!.average()
+            println("$i - $currAverage")
+        }
+        println("The most complex sudoku to solve: ")
+        sudoku.printTheGrid(complexGrid)
+        println("Its solution: ")
+        sudoku.printTheGrid(answerForComplexGrid)
+    }
+
+    /* Checking the dependence of the time it takes to solve a sudoku on its size
+    Grid sizes taken for the experiment - 9x9, 16x16, 25x25, 36x36
+    Difficulty - 70%
+     */
+
+    @Test
+    fun sizeIncreasingTest() {
+        val sudokuSizes = listOf(9, 16, 25, 36)
+
+        //Testing DLX Algorithm
+        for (sudokuSize in sudokuSizes) {
+            val difficulty = (0.7 * sudokuSize * sudokuSize).toInt()
+            sudoku = Sudoku(sudokuSize, difficulty)
+            sudokuSolverDLX = SudokuSolverDLX(sudoku.getGrid(), false, needToPrint = true)
+            val timeInMillis = measureTimeMillis {
+                sudokuSolverDLX.solve()
+            }
+            println("($sudokuSize x $sudokuSize) -- $timeInMillis")
+        }
+
+        //Testing Backtracking Algorithm
+        for (sudokuSize in sudokuSizes) {
+            val difficulty = (0.7 * sudokuSize * sudokuSize).toInt()
+            sudoku = Sudoku(sudokuSize, difficulty)
+            sudokuSolverBacktracking = SudokuSolverBacktracking(sudoku.getGrid())
+            val timeInMillis = measureTimeMillis {
+                sudokuSolverBacktracking.solve()
+            }
+            println("($sudokuSize x $sudokuSize) -- $timeInMillis")
+        }
     }
 
     @Test
     fun gridIsValid() {
         grid = createTestGrid9x9()
-        sudokuSolver = SudokuSolver(grid, 9)
+        sudokuSolverBacktracking = SudokuSolverBacktracking(grid)
         var isValid = true
 
         for (row in 0..8) {
             for (column in 0..8) {
-                val res = sudokuSolver.validityCheck(grid, row, column)
+                val res = sudokuSolverBacktracking.validityCheck(grid, row, column)
                 if (!res) {
                     isValid = false
                     break
@@ -179,11 +266,11 @@ class SudokuSolvingTest {
         assertTrue(isValid)
 
         grid = createWrongGrid()
-        sudokuSolver = SudokuSolver(grid, 9)
+        sudokuSolverBacktracking = SudokuSolverBacktracking(grid)
         isValid = false
         for (row in 0..8) {
             for (column in 0..8) {
-                val res = sudokuSolver.validityCheck(grid, row, column)
+                val res = sudokuSolverBacktracking.validityCheck(grid, row, column)
                 if (!res) {
                     isValid = false
                     break
@@ -221,12 +308,13 @@ class SudokuSolvingTest {
         val difficulty = 8
         var cntEmptyCells = 0
         sudoku = Sudoku(9, difficulty)
+
         /*When initializing sudoku, method 'setUpGrid' runs and removes cells automatically
         We will just be checking that there're '0' in the generated sudoku grid
          */
 
         val test = sudoku.getGrid()
-        val gridSize = sudoku.getGridSize()
+        val gridSize = test.size
         for (row in 0 until gridSize) {
             for (column in 0 until gridSize) {
                 if (test[row][column] == 0) cntEmptyCells++

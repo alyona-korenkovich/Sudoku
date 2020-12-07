@@ -1,5 +1,6 @@
 package ru.spbstu
 
+import java.lang.StringBuilder
 import kotlin.math.sqrt
 import kotlin.random.Random
 
@@ -13,6 +14,7 @@ class Sudoku(gridSize: Int, difficulty: Int) {
         setUpGrid()
     }
 
+    //Generation of Sudoku: getting complete grid, its shuffling and removing random number of cells
     private fun setUpGrid(): Array<IntArray> {
         createBaseGrid()
         board = shuffle(board)
@@ -20,6 +22,7 @@ class Sudoku(gridSize: Int, difficulty: Int) {
         return board
     }
 
+    //Complete grid
     private fun createBaseGrid() {
         for (i in 0 until boardSize) {
             for (j in 0 until boardSize) {
@@ -28,6 +31,7 @@ class Sudoku(gridSize: Int, difficulty: Int) {
         }
     }
 
+    //Shuffling the grid by calling the functions randomly
     fun shuffle(board: Array<IntArray>): Array<IntArray> {
         var shuffledGrid = board
 
@@ -48,6 +52,7 @@ class Sudoku(gridSize: Int, difficulty: Int) {
         return shuffledGrid
     }
 
+    //Exchanging the positions of rows and columns
     private fun transpose(grid: Array<IntArray>): Array<IntArray> {
         val transposedGrid = Array(boardSize) { IntArray(boardSize) }
         for (i in 0 until boardSize) {
@@ -58,6 +63,7 @@ class Sudoku(gridSize: Int, difficulty: Int) {
         return transposedGrid
     }
 
+    //Swapping two rows belonging to one area
     private fun swapRowsSmall(grid: Array<IntArray>) {
         val randBlock = Random.nextInt(0, blockSize)
         val randRow1 = blockSize * randBlock + Random.nextInt(0, blockSize)
@@ -71,6 +77,7 @@ class Sudoku(gridSize: Int, difficulty: Int) {
         grid[randRow2] = temp
     }
 
+    //Swapping several rows (areas)
     private fun swapRowsAreas(grid: Array<IntArray>) {
         val firstArea = Random.nextInt(0, blockSize)
         var secondArea = Random.nextInt(0, blockSize)
@@ -86,22 +93,26 @@ class Sudoku(gridSize: Int, difficulty: Int) {
         }
     }
 
+    //Swapping two columns belonging to one area
     private fun swapColumnsSmall(grid: Array<IntArray>): Array<IntArray> {
         val tempGrid = transpose(grid)
         swapRowsSmall(tempGrid)
         return transpose(tempGrid)
     }
 
+    //Swapping several columns (areas)
     private fun swapColumnsAreas(grid: Array<IntArray>): Array<IntArray> {
         val tempGrid = transpose(grid)
         swapRowsAreas(tempGrid)
         return transpose(tempGrid)
     }
 
-    fun removeCells(grid: Array<IntArray>, n: Int) {
+    //Removal of 'n' cells
+    private fun removeCells(grid: Array<IntArray>, n: Int) {
         val seen = Array(boardSize) { IntArray(boardSize) { 0 } }
         var difficulty = n
         val solvedGrid = Array(boardSize) { IntArray(boardSize) }
+        val solver = SudokuSolverDLX(grid, allSolutions = false, needToPrint = false)
 
         for (row in 0 until boardSize) {
             for (column in 0 until boardSize) {
@@ -114,23 +125,34 @@ class Sudoku(gridSize: Int, difficulty: Int) {
             val randColumn = Random.nextInt(0, boardSize)
             if (seen[randRow][randColumn] == 0) {
                 seen[randRow][randColumn] = 1
+                val selectedCell = grid[randRow][randColumn] //Saving cell
                 grid[randRow][randColumn] = 0
-                difficulty--
+                solver.saveMatrix(grid)
+                solver.solve()
+                if (solver.getSolutionsCount() != 1) {
+                    grid[randRow][randColumn] = selectedCell
+                    seen[randRow][randColumn] = 0
+                } else
+                    difficulty--
             }
         }
     }
 
+    //Helper functions
+
     fun printTheGrid(grid: Array<IntArray>) {
-        for (row in 0 until boardSize) {
-            println(grid[row].contentToString())
+        val size = grid.size
+        for (row in grid) {
+            val sB = StringBuilder()
+            for (i in 0 until size) {
+                sB.append(row[i]).append(" ")
+            }
+            println(sB)
         }
+        println()
     }
 
     fun getGrid(): Array<IntArray> {
         return board
-    }
-
-    fun getGridSize(): Int {
-        return boardSize
     }
 }
